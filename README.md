@@ -1,4 +1,4 @@
-#market-price-monitor
+market-price-monitor
 
 Logs the US Dollar Index (DXY), gold and silver prices to prices.csv every weekday at 10:00 IST, using GitHub Actions.
 
