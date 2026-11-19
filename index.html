@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DXY, Gold and Silver Prices</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.4rem; }
+  .chart-box { margin: 2rem 0; }
+  #status { color: #666; }
+  a { color: #0969da; }
+</style>
+</head>
+<body>
+<h1>US Dollar Index, Gold and Silver (daily log)</h1>
+<p id="status">Loading prices.csv…</p>
+<div class="chart-box"><canvas id="dxy"></canvas></div>
+<div class="chart-box"><canvas id="gold"></canvas></div>
+<div class="chart-box"><canvas id="silver"></canvas></div>
+<p>Data is read from <a href="prices.csv">prices.csv</a>, updated each weekday at 10:00 IST.</p>
+
+<script>
+const SERIES = [
+  { key: 'dxy',    id: 'dxy',    title: 'US Dollar Index (DXY)', color: '#1f77b4' },
+  { key: 'gold',   id: 'gold',   title: 'Gold (USD/oz)',         color: '#d4a017' },
+  { key: 'silver', id: 'silver', title: 'Silver (USD/oz)',       color: '#7f7f7f' },
+];
+
+function parseCsv(text) {
+  const lines = text.trim().split('\n').filter(Boolean);
+  const header = lines[0].split(',');
+  const rows = lines.slice(1).map(line => line.split(','));
+  return { header, rows };
+}
+
+function drawChart({ id, title, color }, labels, data) {
+  new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: title,
+        data,
+        borderColor: color,
+        backgroundColor: color,
+        tension: 0.2,
+        spanGaps: true,
+        pointRadius: 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: { title: { display: true, text: title } },
+    },
+  });
+}
+
+async function main() {
+  const status = document.getElementById('status');
+  try {
+    const res = await fetch('prices.csv', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`prices.csv returned HTTP ${res.status}`);
+
+    const { header, rows } = parseCsv(await res.text());
+    if (rows.length === 0) {
+      status.textContent = 'prices.csv has no data rows yet.';
+      return;
+    }
+
+    // Timestamps look like 2026-11-19T10:00:04; show date and time without seconds.
+    const labels = rows.map(r => r[header.indexOf('timestamp')].slice(0, 16).replace('T', ' '));
+
+    for (const s of SERIES) {
+      const col = header.indexOf(s.key);
+      const data = rows.map(r => (r[col] === '' || r[col] === undefined ? null : Number(r[col])));
+      drawChart(s, labels, data);
+    }
+
+    status.textContent = `${rows.length} data point(s) loaded.`;
+  } catch (err) {
+    status.textContent = `Could not load data: ${err.message}`;
+  }
+}
+
+main();
+</script>
+</body>
+</html>
